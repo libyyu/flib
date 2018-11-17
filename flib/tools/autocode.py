@@ -1,23 +1,28 @@
-#coding=utf-8
+# -*- coding: utf-8 -*-
 from hashlib import md5
 import base64
 from time import time
-_auth_key = 'JSLSDds56IO898ASLDdKLKL'
+from sys import version_info
+PY2 = True if version_info < (3, 0) else False
 
+_auth_key = 'JSLSDds56IO898ASLDdKLKL'
 def auth_code(string = '', operation = 'DECODE', key = '', expiry = 0):
+    def md5Raw(s):
+        if PY2: return md5(s)
+        else: return md5(s.encode("utf-8"))
     ckey_length = 4
     if not key: key = _auth_key
-    key = md5(key).hexdigest()
-    keya = md5(key[:16]).hexdigest()
-    keyb = md5(key[16:]).hexdigest()
+    key = md5Raw(key).hexdigest()
+    keya = md5Raw(key[:16]).hexdigest()
+    keyb = md5Raw(key[16:]).hexdigest()
     if ckey_length:
         if operation == 'DECODE':
             keyc = string[:ckey_length]
         else:
-            keyc = md5(str(time())).hexdigest()[-ckey_length:]
+            keyc = md5Raw(str(time())).hexdigest()[-ckey_length:]
     else:
         keyc = ''
-    cryptkey = keya + md5(keya + keyc).hexdigest()
+    cryptkey = keya + md5Raw(keya + keyc).hexdigest()
     key_length = len(cryptkey)
    
     if operation == 'DECODE':
@@ -25,11 +30,11 @@ def auth_code(string = '', operation = 'DECODE', key = '', expiry = 0):
     else:
         if expiry: expiry = expiry + time()
         expiry = '%010d' % expiry
-        string = expiry + md5(string + keyb).hexdigest()[:16] + string
+        string = expiry + md5Raw(string + keyb).hexdigest()[:16] + string
     string_length = len(string)
    
     result = ''
-    box = range(256)
+    box = range(256) if PY2 else list(range(256))
     rndkey = {}
     for i in range(256):
         rndkey[i] = ord(cryptkey[i % key_length])
@@ -48,19 +53,32 @@ def auth_code(string = '', operation = 'DECODE', key = '', expiry = 0):
         tmp = box[a]
         box[a] = box[j]
         box[j] = tmp
-        result += chr(ord(string[i]) ^ (box[(box[a] + box[j]) % 256]))
+        cr = chr(ord(string[i])) if PY2 else int(string[i])
+        try:
+            if PY2:
+                result += cr ^ (box[(box[a] + box[j]) % 256])
+            else:
+                result += str(cr ^ (box[(box[a] + box[j]) % 256]))
+        except:
+            print(string[i], cr, type(cr))
+            print(box[(box[a] + box[j]) % 256])
+            raise
     if operation == 'DECODE':
-        if result[:10] == 0 or int(result[:10]) - time() > 0 or result[10:26] == md5(result[26:] + keyb).hexdigest()[:16]:
+        if result[:10] == 0 or int(result[:10]) - time() > 0 or result[10:26] == md5Raw(result[26:] + keyb).hexdigest()[:16]:
             return result[26:]
         else:
             return ''
     else:
-        return keyc + base64.urlsafe_b64encode(result) #replace('=', '')
+        if PY2:
+            return keyc + base64.urlsafe_b64encode(result)
+        else:
+            be = base64.urlsafe_b64encode(bytes(result.encode("utf-8")))
+            return keyc + str(be.decode("utf-8")) #replace('=', '')
 
 if __name__ == '__main__':
     str1 = 'hello world !!!'
     encode_str = auth_code(str1, 'ENCODE') #加密
-    print encode_str
-    print base64.urlsafe_b64encode(encode_str)
-    print auth_code(encode_str) #解密
+    print (encode_str)
+    #print (base64.urlsafe_b64encode(encode_str))
+    print (auth_code(encode_str)) #解密
 

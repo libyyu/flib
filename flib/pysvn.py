@@ -128,7 +128,7 @@ class SvnClient(object):
 
 def main():
     cmd = SvnClient()
-    print cmd.GetInfo('.').Path
+    print (cmd.GetInfo('.').Path)
 
 if __name__ == '__main__':
     main()

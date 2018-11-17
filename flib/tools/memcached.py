@@ -22,6 +22,6 @@ class Memcached(object):
 
 if __name__ == '__main__':
 	Memcached.set('a', 'fjlajfl')
-	print Memcached.get('a')
+	print (Memcached.get('a'))
 	Memcached.set('a','')
-	print Memcached.get('a', 'b')
+	print (Memcached.get('a', 'b'))

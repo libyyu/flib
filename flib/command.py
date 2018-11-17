@@ -238,7 +238,7 @@ class Command(object):
 
 def main():
 	cmd = Command("echo 'a'", logout=True, collectlog=True, simple=True)
-	print cmd
+	print (cmd)
 
 if __name__ == '__main__':
 	main()
