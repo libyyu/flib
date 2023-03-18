@@ -14,9 +14,9 @@ elif version_info >= (3, 0):
 
 if not PY3:
     try:
-        import cStringIO as StringIO
-    except ImportError:
         from StringIO import StringIO
+    except ImportError:
+        import cStringIO as StringIO
     import urllib
     import cookielib
     from urllib2 import BaseHandler, addinfourl, HTTPCookieProcessor, build_opener, install_opener, HTTPHandler, HTTPSHandler
@@ -66,7 +66,7 @@ class ContentEncodingProcessor(BaseHandler):
 DEFAULT_HEADERS = {
         "User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:43.0) Gecko/20100101 Firefox/43.0",
         "Accept-Encoding": "gzip, deflate",
-        "Connection":"keep-alive"
+        #"Connection":"keep-alive"
     }
 
 def getOpener():

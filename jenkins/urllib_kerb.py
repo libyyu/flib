@@ -16,7 +16,10 @@ import logging
 import re
 
 import kerberos
-from six.moves.urllib import error, request
+try:
+    from six.moves.urllib import error, request
+except:
+    from .six.moves.urllib import error, request
 
 logger = logging.getLogger(__name__)
 

@@ -79,7 +79,7 @@ def match(patterns):
     return SearchFiles(dirname, basename, recursive=recursive, excludes=excludes)
 
 def main():
-    print match('F:/EightWorkspace/trunk/win/client/UnityProject/Assets/**/Editor/**.cs')
+    print (match('F:/EightWorkspace/trunk/win/client/UnityProject/Assets/**/Editor/**.cs'))
 
 if __name__ == '__main__':
     main()

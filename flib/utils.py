@@ -18,8 +18,11 @@ import time
 from functools import wraps
 
 import flib
-from flib import chardet
 from flib.tools.console_util import print_with_color
+try:
+    import chardet
+except ImportError:
+    from flib import chardet
 
 def singleton(cls):
     """
@@ -76,24 +79,30 @@ def toUnicode(s):
     try:
         enc = chardet.detect(s)['encoding']
         #print enc
-        if enc == 'ISO-8859-2' or enc == "TIS-620":
+        gbkmap = ['ISO-8859-2', 'iso-8859-1', 'TIS-620', 'IBM855', 'IBM866', 'windows-1252']
+        if enc in gbkmap:
             enc = 'gbk'
-            if flib.PY2:
-                return unicode(s, enc, 'ignore')
-            elif flib.PY3:
-                return s.decode('utf-8', 'ignore')
+            us = unicode(s, enc)
+        # 继续往后转码
+        if enc == None:
+            enc = sys.getdefaultencoding()
+        if flib.PY2:
+            return unicode(s, enc, 'ignore')
+        elif flib.PY3:
+            return s.decode('utf-8', 'ignore')
     except Exception as e:
         flib.printf(str(e))
-        return
+        pass
+        #return
     ###
-    charsets = ('gbk', 'gb18030', 'gb2312', 'iso-8859-1', 'utf-16', 'utf-8', 'utf-32', 'ascii')
+    charsets = ('gbk', 'gb18030', 'gb2312', 'iso-8859-1', 'utf-16', 'utf-8', 'utf-32', 'ascii', 'KOI8-R', 'iso-8859-2', 'iso-8859-5', 'iso-8859-7', 'iso-8859-8', 'IBM855', 'IBM866', 'windows-1252')
     for charset in charsets:
         try:
             #print charset
             if flib.PY2:
                 return unicode(s, charset)
             elif flib.PY3:
-                return s.decode('utf-8')
+                return s.decode(charset)
         except:
             continue
 
@@ -109,6 +118,8 @@ def toUTF8(s):
             return s.encode('utf-8')
         elif flib.PY3 and isinstance(s, str):
             return s.encode('utf-8')
+        elif flib.PY3 and isinstance(s, bytes):
+            return s
         enc = chardet.detect(s)['encoding']
         if enc == 'utf-8':
             return s
@@ -141,6 +152,17 @@ def toGBK(s):
     s = toUnicode(s)
     if s:
         return s.encode('gbk')
+
+def toANSI(s):
+    try:
+        enc = getEncoding(s)
+        if enc and enc['encoding'] == "utf-8":
+            s = s.decode('utf-8')
+    except Exception as e:
+        pass
+    s = toUnicode(s)
+    if s:
+        return s.encode('ascii')
 
 def toStr(s):
     if not s: return ""
@@ -178,7 +200,7 @@ def __print__(s, newLine = True, color = None):
     print_with_color(s, newLine=newLine, color=color)
 
 def __log__(tag, color, *args):
-    if tag: __print__(toStr(tag), newLine=False, color=color)
+    if tag and tag != "": __print__(toStr(tag), newLine=False, color=color)
     __index__ = 0
     for s in args:
         __index__ = __index__ + 1
@@ -192,6 +214,7 @@ class Log(object):
     """log util"""
     _lock = threading.Lock()
     _lock2 = multiprocessing.Lock()
+    _no_prefix = False
     @classmethod
     def logWithColor(cls, color, *args):
         cls._lock2.acquire()
@@ -210,45 +233,68 @@ class Log(object):
     def i(*args):
         Log._lock2.acquire()
         Log._lock.acquire()
-        __log__("[info]", None, *args)
+        if Log._no_prefix:
+            __log__("", None, *args)
+        else:
+            __log__("[info]", None, *args)
         Log._lock.release()
         Log._lock2.release()
     @staticmethod
     def d(*args):
         Log._lock2.acquire()
         Log._lock.acquire()
-        __log__("[debug]", "blue", *args)
+        if Log._no_prefix:
+            __log__("", "blue", *args)
+        else:
+            __log__("[debug]", "blue", *args)
         Log._lock.release()
         Log._lock2.release()
     @staticmethod
     def w(*args):
         Log._lock2.acquire()
         Log._lock.acquire()
-        __log__("[warning]", "yellow", *args)
+        if Log._no_prefix:
+            __log__("", "yellow", *args)
+        else:
+            __log__("[warning]", "yellow", *args)
         Log._lock.release()
         Log._lock2.release()
     @staticmethod
     def e(*args):
         Log._lock2.acquire()
         Log._lock.acquire()
-        __log__("[error]", "red", *args)
+        if Log._no_prefix:
+            __log__("", "red", *args)
+        else:
+            __log__("[error]", "red", *args)
         Log._lock.release()
         Log._lock2.release()
     @staticmethod
     def s(*args):
         Log._lock2.acquire()
         Log._lock.acquire()
-        __log__("[session]", "green", *args)
+        if Log._no_prefix:
+            __log__("", "green", *args)
+        else:
+            __log__("[session]", "green", *args)
         Log._lock.release()
         Log._lock2.release()
     @staticmethod
     def expt(*args):
         Log._lock2.acquire()
         Log._lock.acquire()
+        if Log._no_prefix:
+            __log__("", "red", *args)
+        else:
+            __log__("[error]", "red", *args)
         err_msg = " ".join([toStr(x) for x in args])
         Log._lock.release()
         Log._lock2.release()
         raise Exception(err_msg)
+
+    @classmethod
+    def noPrefix(cls, v):
+        cls._no_prefix = v
 
 def ZLPrint(*args):
     __log__("", None, *args)
@@ -409,6 +455,11 @@ def exec_command(*args, **kwargs):
 def check_output(*args, **kwargs):
     param = " ".join([str(x) for x in args])
     return execute(cmds=param.format(**kwargs), logout=False, finalcallback=None)
+
+
+def try_check_output(*args, **kwargs):
+    param = " ".join([str(x) for x in args])
+    return execute(cmds=param.format(**kwargs), logout=False, finalcallback=None, try_exec=True)
 
 def simple_exec(*args, **kwargs):
     try:
@@ -582,8 +633,9 @@ class guard_op:
             self._lock.tryUnLock()
 
 def getJavaProperty(key):
+    from plugins import __plugin_path__
     if key.startswith('-D'): key = key[2:]
-    jar = os.path.join(flib.__plugin_path__, "getProperty.jar")
+    jar = os.path.join(__plugin_path__, "getProperty.jar")
     outputs = check_output('''java -jar "{bin}" {key}''', bin=jar, key=key)
     if outputs:
         value = outputs[0]
@@ -600,6 +652,8 @@ def toJenkinsEncoding(s):
         elif flib.PY3:
             if not isinstance(s, str) and not isinstance(s, bytes):
                 return str(s)
+            if isinstance(s, bytes):
+                s = s.decode('utf-8', 'ignore')
         global __jenkins_encoding
         if not __jenkins_encoding:
             __jenkins_encoding = getJavaProperty("file.encoding")

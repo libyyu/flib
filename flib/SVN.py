@@ -66,7 +66,7 @@ class SVN:
         identify = ""
         if SVN.username: identify += " --username=" + SVN.username
         if SVN.password: identify += " --password=" + SVN.password
-        return check_output("svn propget svn:mergeinfo {url} {identify}".format(url=url,identify=identify))
+        return try_check_output("svn propget svn:mergeinfo {url} {identify}".format(url=url,identify=identify))
 
     @classmethod
     def get_start_version(cls,url):
@@ -146,7 +146,8 @@ class SVN:
     @classmethod
     def get_merge_record_from_branch(cls,url, branch):
         records = SVN.get_merge_records(url)
-        if not records:return
+        if not records:return []
+        if type(records) == bool: return []
         for v in records:
             s = '{prefix}/{branch}:'.format(prefix='' if branch == "trunk" else '/branches', branch=branch)
             if v.startswith(s):
