@@ -79,7 +79,10 @@ except ImportError:
         import dummy_thread as thread
 
 if win32 or jython:
-    time_func = time.clock
+    if sys.version_info >= (3, 8):
+        time_func = time.perf_counter()
+    else:
+        time_func = time.clock
 else:
     time_func = time.time
 
