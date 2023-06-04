@@ -17,7 +17,7 @@ except ImportError:
 #reload(sys)
 #sys.setdefaultencoding("utf-8")
 try:
-    from flib.utils import Log
+    from flib import log as Log
     use_flib = True
 except ImportError:
     use_flib = False

@@ -2,6 +2,7 @@
 '''
 命令行操作
 '''
+import socketserver
 import sys
 import os
 import shutil
@@ -11,20 +12,26 @@ import subprocess, shlex
 from sys import version_info
 import platform
 import time
-use_flib = False
+
 try:
-	from flib.utils import Log
-	from flib.utils import toStr
+	from flib import log as Log
+	from flib.encode import toStr
+
 	use_flib = True
 except ImportError:
-	pass
+	use_flib = False
 
 WINDOWS = platform.system() == "Windows"
 PY3 = version_info >= (3, 0)
 env_encoding = locale.getpreferredencoding()
 
+
 def TOSTR(s):
-    return s
+	if use_flib:
+		return toStr(s)
+	else:
+		return s
+
 
 def LOG(*args):
 	if use_flib:
@@ -43,6 +50,7 @@ def LOGI(*args):
 		sys.stdout.write("[info]" + param + "\n")
 		sys.stdout.flush()
 
+
 def LOGW(*args):
 	if use_flib:
 		Log.w(*args)
@@ -50,6 +58,7 @@ def LOGW(*args):
 		param = " ".join([str(x) for x in args])
 		sys.stdout.write("[warn]" + param + "\n")
 		sys.stdout.flush()
+
 
 def LOGE(*args):
 	if use_flib:
@@ -59,10 +68,12 @@ def LOGE(*args):
 		sys.stderr.write("[error]" + param + "\n")
 		sys.stderr.flush()
 
+
 class CommandResult(object):
 	"""
 	"""
-	def __init__(self, exitcode, outputs = None, errors = None):
+
+	def __init__(self, exitcode, outputs=None, errors=None):
 		self.exitcode = exitcode
 		self.outputs = outputs or []
 		self.errors = errors or []
@@ -76,8 +87,13 @@ class CommandResult(object):
 
 	def __str__(self):
 		return '''exitcode={exitcode}\noutput=\n\t{output}\nerror=\n\t{error}'''.format(exitcode=self.exitcode,
-																output="\n\t".join([str(x) for x in self.outputs]),
-																error="\n\t".join([str(x) for x in self.errors]))
+																						output="\n\t".join(
+																							[str(x) for x in
+																							 self.outputs]),
+																						error="\n\t".join(
+																							[str(x) for x in
+																							 self.errors]))
+
 
 class Command(object):
 	"""
@@ -104,7 +120,7 @@ class Command(object):
 		"encoding": PY3
 	}
 
-	def _onReadProcWindows(self, collectlog=False, logout=False, try_exec = False):
+	def _onReadProcWindows(self, collectlog=False, logout=False, try_exec=False):
 		import contextlib
 		def unbuffered(proc, stream='stdout'):
 			newlines = ['\n', '\r\n', '\r']
@@ -124,6 +140,7 @@ class Command(object):
 						last = stream.read(1)
 					out = ''.join(out)
 					yield out
+
 		p_args = self.p_args
 		if PY3:
 			while p_args and p_args['stdout']:
@@ -159,7 +176,8 @@ class Command(object):
 					if collectlog: self.errors.append(line)
 					if not try_exec and logout: LOGE(line)
 					if self.ErrorCallback is not None: self.ErrorCallback(line, self.UserData)
-	def _onReadProcLinux(self, collectlog=False, logout=False, try_exec = False):
+
+	def _onReadProcLinux(self, collectlog=False, logout=False, try_exec=False):
 		import select
 		rlist = [self.proc.stdout, self.proc.stderr]
 		while rlist:
@@ -188,11 +206,15 @@ class Command(object):
 					if not try_exec and logout: LOGE(line)
 					if self.ErrorCallback is not None: self.ErrorCallback(line, self.UserData)
 
-	def __init__(self, cmds = None, simple=False, logout=False, collectlog=False, try_exec=False, communicate=None, OutputCallback=None, ErrorCallback=None, NoWait=None, UserData=None, **kwargs):
+	def __init__(self, cmds=None, simple=False, logout=False, collectlog=False, try_exec=False, communicate=None,
+				 OutputCallback=None, ErrorCallback=None, NoWait=None, UserData=None, **kwargs):
 		if cmds is not None:
-			self.init(cmds, simple=simple, logout=logout, collectlog=collectlog, try_exec=try_exec, communicate=communicate, OutputCallback=OutputCallback, ErrorCallback=ErrorCallback, NoWait=NoWait, UserData=UserData, **kwargs)
+			self.init(cmds, simple=simple, logout=logout, collectlog=collectlog, try_exec=try_exec,
+					  communicate=communicate, OutputCallback=OutputCallback, ErrorCallback=ErrorCallback,
+					  NoWait=NoWait, UserData=UserData, **kwargs)
 
-	def init(self, cmds, simple=False, logout=False, collectlog=False, try_exec=False, communicate=None, OutputCallback=None, ErrorCallback=None, NoWait=None, UserData=None, **kwargs):
+	def init(self, cmds, simple=False, logout=False, collectlog=False, try_exec=False, communicate=None,
+			 OutputCallback=None, ErrorCallback=None, NoWait=None, UserData=None, **kwargs):
 		self.p_args = {}
 		self.proc = None
 		self.outputs = []
@@ -214,15 +236,18 @@ class Command(object):
 			if "stdout" not in self.p_args: self.p_args["stdout"] = subprocess.PIPE
 			if "stderr" not in self.p_args: self.p_args["stderr"] = subprocess.PIPE
 		if communicate and "stdin" not in self.p_args: self.p_args["stdin"] = subprocess.PIPE
-		if WINDOWS and "shell" not in self.p_args: self.p_args["shell"] = True
+		if "shell" not in self.p_args: self.p_args["shell"] = True
 		try:
-			if self.p_args["shell"] == True:
+			if WINDOWS:
 				self.proc = subprocess.Popen(shlex.split(cmds), **(self.p_args))
 			else:
 				self.proc = subprocess.Popen(cmds, **(self.p_args))
-			#if communicate: communicate(self.proc)
+			# if communicate: communicate(self.proc)
 			if (vcollectlog or vlogout):
-				self._onReadProcWindows(collectlog=collectlog, logout=logout, try_exec=try_exec) if WINDOWS else self._onReadProcLinux(collectlog=collectlog, logout=logout, try_exec=try_exec)
+				self._onReadProcWindows(collectlog=collectlog, logout=logout,
+										try_exec=try_exec) if WINDOWS else self._onReadProcLinux(collectlog=collectlog,
+																								 logout=logout,
+																								 try_exec=try_exec)
 			if not NoWait: self.Wait()
 		except Exception as e:
 			self.Kill()
@@ -273,10 +298,9 @@ class Command(object):
 
 	@classmethod
 	def __InputProc(cls, self, cmd):
-		#self.proc.communicate(cmd)
+		# self.proc.communicate(cmd)
 		self.proc.stdin.write(cmd)
-		#self.proc.stdin.close()
-
+	# self.proc.stdin.close()
 
 
 class RemoteCommand(object):
@@ -290,27 +314,74 @@ class RemoteCommand(object):
 		self.__connect()
 
 	def __connect(self):
-		print('begin connect remote', time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time())))
+		print('begin connect remote', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
 		from threading import Thread
 		p = Thread(target=self.__proc, args=(self,))
 		p.start()
 		time.sleep(4)
 
 	def __proc(self, *args):
-		print('enter proc', time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time())))
-		self.cmd.init('''cmd /c sh -c "ssh -tt -o BatchMode=yes -i ./RemoteToolChainPrivate.key -p 22 zulong@10.236.179.85"''', logout=True, collectlog=True, simple=True, communicate=True)
-		print('proc', time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time())))
+		print('enter proc', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+		self.cmd.init(
+			'''cmd /c sh -c "ssh -tt -o BatchMode=yes -i ./RemoteToolChainPrivate.key -p 22 zulong@10.236.179.85"''',
+			logout=True, collectlog=True, simple=True, communicate=True)
+		print('proc', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
 
 	def Pwd(self):
-		print("pwd", self.cmd, time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time())))
+		print("pwd", self.cmd, time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
 		self.cmd.Input('pwd')
 
 	def Input(self, cmd):
 		self.cmd.Input(cmd)
 
+
+def exec_command(*args, **kwargs):
+	param = " ".join([str(x) for x in args])
+	arg = param.format(**kwargs)
+	cmd = Command(arg, logout=True, collectlog=True, simple=True)
+	if not cmd: raise Exception("failed '" + arg + "'")
+
+
+def exec_output(*args, **kwargs):
+	param = " ".join([str(x) for x in args])
+	arg = param.format(**kwargs)
+	cmd = Command(arg, logout=False, collectlog=True, simple=True)
+	if not cmd: raise Exception("failed '" + arg + "'")
+	return cmd.Result.outputs, cmd.Result.errors
+
+
+def exec_sh(*args, **kwargs):
+	import uuid
+	name = os.path.join(os.getcwd(), str(uuid.uuid1()) + ".sh").replace("\\", "/")
+	param = " ".join([str(x) for x in args])
+	arg = param.format(**kwargs)
+	with open(name, "w+") as f:
+		f.write(arg)
+		f.close()
+	try:
+		return exec_command("sh " + name)
+	finally:
+		os.remove(name)
+
+
+def exec_simple(*args, **kwargs):
+	try:
+		param = " ".join([str(x) for x in args])
+		p = subprocess.Popen(shlex.split(param.format(**kwargs)), shell=True)
+		p.wait()
+		if p.returncode != 0:
+			LOGE("Failed to execute command '" + param.format(**kwargs) + "'")
+			return False
+		else:
+			return True
+	except Exception as e:
+		LOGE(e)
+		return False
+
+
 def main():
 	cmd = Command("echo 'a'", logout=True, collectlog=True, simple=True)
-	print (cmd)
+	print(cmd)
 
 	rcmd = RemoteCommand("10.236.179.85", "zulong")
 	rcmd.Pwd()

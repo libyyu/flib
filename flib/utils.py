@@ -17,12 +17,62 @@ import threading
 import time
 from functools import wraps
 
-import flib
-from flib.tools.console_util import print_with_color
 try:
-    import chardet
+	from flib import log as Log
+	from flib.encode import toStr
+	use_flib = True
 except ImportError:
-    from flib import chardet
+	use_flib = False
+
+def LOG(*args):
+	if use_flib:
+		Log.log(*args)
+	else:
+		param = " ".join([str(x) for x in args])
+		sys.stdout.write(param + "\n")
+		sys.stdout.flush()
+
+def LOG(*args):
+	if use_flib:
+		Log.log(*args)
+	else:
+		param = " ".join([str(x) for x in args])
+		sys.stdout.write(param + "\n")
+		sys.stdout.flush()
+
+def LOGI(*args):
+	if use_flib:
+		Log.i(*args)
+	else:
+		param = " ".join([str(x) for x in args])
+		sys.stdout.write("[info]" + param + "\n")
+		sys.stdout.flush()
+
+def LOGW(*args):
+	if use_flib:
+		Log.w(*args)
+	else:
+		param = " ".join([str(x) for x in args])
+		sys.stdout.write("[warn]" + param + "\n")
+		sys.stdout.flush()
+
+def LOGE(*args):
+	if use_flib:
+		Log.e(*args)
+	else:
+		param = " ".join([str(x) for x in args])
+		sys.stderr.write("[error]" + param + "\n")
+		sys.stderr.flush()
+  
+def LOGFATAL(*args):
+	if use_flib:
+		Log.expt(*args)
+	else:
+		param = " ".join([str(x) for x in args])
+		sys.stderr.write("[exception]" + param + "\n")
+		sys.stderr.flush()
+		raise Exception(param)
+
 
 def singleton(cls):
     """
@@ -62,128 +112,6 @@ class dict_to_object(dict):
         self[key] = value
         pass
 
-def getEncoding(s):
-    try:
-        enc = chardet.detect(s)
-        return enc
-    except:
-        return
-
-def toUnicode(s):
-    if not s:
-        return
-    if flib.PY2 and isinstance(s, unicode):
-        return s
-    elif flib.PY3 and isinstance(s, str):
-        return s
-    try:
-        enc = chardet.detect(s)['encoding']
-        #print enc
-        gbkmap = ['ISO-8859-2', 'iso-8859-1', 'TIS-620', 'IBM855', 'IBM866', 'windows-1252']
-        if enc in gbkmap:
-            enc = 'gbk'
-            us = unicode(s, enc)
-        # 继续往后转码
-        if enc == None:
-            enc = sys.getdefaultencoding()
-        if flib.PY2:
-            return unicode(s, enc, 'ignore')
-        elif flib.PY3:
-            return s.decode('utf-8', 'ignore')
-    except Exception as e:
-        flib.printf(str(e))
-        pass
-        #return
-    ###
-    charsets = ('gbk', 'gb18030', 'gb2312', 'iso-8859-1', 'utf-16', 'utf-8', 'utf-32', 'ascii', 'KOI8-R', 'iso-8859-2', 'iso-8859-5', 'iso-8859-7', 'iso-8859-8', 'IBM855', 'IBM866', 'windows-1252')
-    for charset in charsets:
-        try:
-            #print charset
-            if flib.PY2:
-                return unicode(s, charset)
-            elif flib.PY3:
-                return s.decode(charset)
-        except:
-            continue
-
-def toUTF8(s):
-    try:
-        if flib.PY2:
-            if not isinstance(s, unicode) and not isinstance(s, str) and not isinstance(s, bytes):
-                return
-        elif flib.PY3:
-            if not isinstance(s, str) and not isinstance(s, bytes):
-                return
-        if flib.PY2 and isinstance(s, unicode):
-            return s.encode('utf-8')
-        elif flib.PY3 and isinstance(s, str):
-            return s.encode('utf-8')
-        elif flib.PY3 and isinstance(s, bytes):
-            return s
-        enc = chardet.detect(s)['encoding']
-        if enc == 'utf-8':
-            return s
-        else:
-            s = toUnicode(s)
-            if s:
-                return s.encode('utf-8')
-    except Exception as e:
-        flib.printf(str(e))
-        return
-
-def toGB2312(s):
-    try:
-        enc = getEncoding(s)
-        if enc and enc['encoding'] == "utf-8":
-            s = s.decode('utf-8')
-    except Exception as e:
-        pass
-    s = toUnicode(s)
-    if s:
-        return s.encode('gb2312')
-
-def toGBK(s):
-    try:
-        enc = getEncoding(s)
-        if enc and enc['encoding'] == "utf-8":
-            s = s.decode('utf-8')
-    except Exception as e:
-        pass
-    s = toUnicode(s)
-    if s:
-        return s.encode('gbk')
-
-def toANSI(s):
-    try:
-        enc = getEncoding(s)
-        if enc and enc['encoding'] == "utf-8":
-            s = s.decode('utf-8')
-    except Exception as e:
-        pass
-    s = toUnicode(s)
-    if s:
-        return s.encode('ascii')
-
-def toStr(s):
-    if not s: return ""
-    try:
-        if flib.PY2:
-            if not isinstance(s, unicode) and not isinstance(s, str) and not isinstance(s, bytes):
-                return str(s)
-        elif flib.PY3:
-            if not isinstance(s, str) and not isinstance(s, bytes):
-                return str(s)
-            if isinstance(s, str):
-                return s
-            elif isinstance(s, bytes):
-                return s.decode('utf-8')
-        if sys.stdout.encoding == "cp936":
-            return toGBK(s)
-        return toUTF8(s)
-    except Exception as e:
-        flib.printf( str(e) )
-        return s
-
 # 环境变量
 def getenv(key, default=None):
     return os.environ[key] if key in os.environ else default
@@ -195,110 +123,6 @@ def newuuid():
     import uuid
     return uuid.uuid1()
 
-# 日志输出
-def __print__(s, newLine = True, color = None):
-    print_with_color(s, newLine=newLine, color=color)
-
-def __log__(tag, color, *args):
-    if tag and tag != "": __print__(toStr(tag), newLine=False, color=color)
-    __index__ = 0
-    for s in args:
-        __index__ = __index__ + 1
-        tmp = toStr(s)
-        __print__(tmp if tmp else str(s), newLine=False, color=color)
-        __print__(" " if __index__ != len(args) else "", newLine=False, color=color)
-    __print__("", newLine=True, color=color)
-    sys.stdout.flush()
-
-class Log(object):
-    """log util"""
-    _lock = threading.Lock()
-    _lock2 = multiprocessing.Lock()
-    _no_prefix = False
-    @classmethod
-    def logWithColor(cls, color, *args):
-        cls._lock2.acquire()
-        cls._lock.acquire()
-        __log__("", color, *args)
-        cls._lock.release()
-        cls._lock2.release()
-    @staticmethod
-    def log(*args):
-        Log._lock2.acquire()
-        Log._lock.acquire()
-        __log__("", None, *args)
-        Log._lock.release()
-        Log._lock2.release()
-    @staticmethod
-    def i(*args):
-        Log._lock2.acquire()
-        Log._lock.acquire()
-        if Log._no_prefix:
-            __log__("", None, *args)
-        else:
-            __log__("[info]", None, *args)
-        Log._lock.release()
-        Log._lock2.release()
-    @staticmethod
-    def d(*args):
-        Log._lock2.acquire()
-        Log._lock.acquire()
-        if Log._no_prefix:
-            __log__("", "blue", *args)
-        else:
-            __log__("[debug]", "blue", *args)
-        Log._lock.release()
-        Log._lock2.release()
-    @staticmethod
-    def w(*args):
-        Log._lock2.acquire()
-        Log._lock.acquire()
-        if Log._no_prefix:
-            __log__("", "yellow", *args)
-        else:
-            __log__("[warning]", "yellow", *args)
-        Log._lock.release()
-        Log._lock2.release()
-    @staticmethod
-    def e(*args):
-        Log._lock2.acquire()
-        Log._lock.acquire()
-        if Log._no_prefix:
-            __log__("", "red", *args)
-        else:
-            __log__("[error]", "red", *args)
-        Log._lock.release()
-        Log._lock2.release()
-    @staticmethod
-    def s(*args):
-        Log._lock2.acquire()
-        Log._lock.acquire()
-        if Log._no_prefix:
-            __log__("", "green", *args)
-        else:
-            __log__("[session]", "green", *args)
-        Log._lock.release()
-        Log._lock2.release()
-    @staticmethod
-    def expt(*args):
-        Log._lock2.acquire()
-        Log._lock.acquire()
-        if Log._no_prefix:
-            __log__("", "red", *args)
-        else:
-            __log__("[error]", "red", *args)
-        err_msg = " ".join([toStr(x) for x in args])
-        Log._lock.release()
-        Log._lock2.release()
-        raise Exception(err_msg)
-
-    @classmethod
-    def noPrefix(cls, v):
-        cls._no_prefix = v
-
-def ZLPrint(*args):
-    __log__("", None, *args)
-
 #quit
 def quit(func):
     def quit_call(*arg, **kw):
@@ -307,173 +131,6 @@ def quit(func):
             exit(-1)
         return result
     return quit_call
-
-def execute(cmds="", logout=True, finalcallback=None, try_exec = False, communicate=None, **kwargs):
-    def unbuffered(proc, stream='stdout'):
-        newlines = ['\n', '\r\n', '\r']
-        stream = getattr(proc, stream)
-        with contextlib.closing(stream):
-            while True:
-                out = []
-                last = stream.read(1)
-                # Don't loop forever
-                if not last or last == '' and proc.poll() is not None:
-                    break
-                while last not in newlines:
-                    # Don't loop forever
-                    if last == '' and proc.poll() is not None:
-                        break
-                    out.append(last)
-                    last = stream.read(1)
-                out = ''.join(out)
-                yield out
-    try:
-        if logout: Log.log("---->  " + cmds)
-        sysstr = platform.system()
-        # 变参调整
-        args_tpl = {
-            "bufsize" : True,
-            "executable": True,
-            "stdin": True,
-            "stdout": True,
-            "stderr": True,
-            "preexec_fn": True,
-            "close_fds": True,
-            "shell": True,
-            "cwd": True,
-            "env": True,
-            "universal_newlines": True,
-            "startupinfo": True,
-            "creationflags": True,
-            "restore_signals": flib.PY3,
-            "start_new_session": flib.PY3,
-            "pass_fds": flib.PY3,
-            "errors": flib.PY3,
-            "encoding": flib.PY3
-        }
-        p_args = {}
-        for v in kwargs:
-            if v not in args_tpl or not args_tpl[v]:
-                continue
-            p_args[v] = kwargs[v]
-        if args_tpl['encoding'] and 'encoding' not in p_args:
-            p_args['encoding'] = flib.env_encoding
-        p_args['stdout'] = subprocess.PIPE if 'stdout' not in p_args else p_args['stdout']
-        p_args['stderr'] = subprocess.PIPE if 'stderr' not in p_args else p_args['stderr']
-        p_args['shell'] = True if 'shell' not in p_args else p_args['shell']
-        p = subprocess.Popen(shlex.split(cmds) if sysstr == "Windows" else cmds, **p_args)
-        result = []
-        if communicate: communicate(p.stdin)
-        if sysstr == "Windows":
-            if flib.PY2:
-                if p_args['stdout']:
-                    for line in unbuffered(p):
-                        if line:
-                            result.append(line)
-                            if logout: Log.log (line.strip('\r\n'))
-                if p_args['stderr']:
-                    for line in unbuffered(p, "stderr"):
-                        if line and not try_exec: Log.e(line)
-            elif flib.PY3:
-                while p_args['stdout']:
-                    line = p.stdout.readline()
-                    if not line or line == '': break
-                    result.append(line.rstrip())
-                    if logout: Log.log(line.rstrip('\r\n').rstrip('\n'))
-                while not try_exec and p_args['stderr']:
-                    line = p.stderr.readline()
-                    if not line or line == '': break
-                    Log.e(line.rstrip('\r\n').rstrip('\n'))
-            else:
-                raise Exception("Unknow python version")
-        else:
-            rlist = [p.stdout,p.stderr]
-            while rlist:
-                readable, _, _ = select.select(rlist, [], [])
-                for r in readable:
-                    if r is p.stdout:
-                        line = r.readline()
-                        if not line:
-                            rlist.remove(r)
-                            continue
-                        line = line.rstrip('\n').rstrip('\r\n')
-                        if not line: continue
-                        result.append(line)
-                        if logout: Log.log (line)
-                    elif r is p.stderr:
-                        line = r.readline()
-                        if not line:
-                            rlist.remove(r)
-                            continue
-                        line = line.rstrip('\n').rstrip('\r\n')
-                        if not line: continue
-                        if not try_exec: Log.e (line)
-        p.wait()
-
-        returncode = p.returncode
-
-        if p.stdin:
-            p.stdin.close()
-        if p.stdout:
-            p.stdout.close()
-        if p.stderr:
-            p.stderr.close()
-        try:
-            p.kill()
-        except OSError:
-            pass
-
-        if returncode != 0:
-            if not try_exec: Log.e ("Failed to execute command '" + cmds + "'")
-            return False
-        else:
-            if len(result) == 0: return True
-            return result
-    except Exception as e:
-        if not try_exec: Log.e (str(e))
-        if not try_exec: Log.e ("Failed to execute command '" + cmds + "'")
-        return False
-    finally:
-        if finalcallback: finalcallback()
-
-def exec_sh(cmds="", logout=False, args=list()):
-    name = os.path.join(os.getcwd(), str(newuuid()) + ".sh").replace("\\", "/")
-    with flib.open(name, "w+") as f:
-        f.write(cmds)
-        f.close()
-        param = " " + " ".join([str(x) for x in args]) if args else ""
-        return execute(cmds="sh " + name + param, finalcallback=lambda:os.remove(name), logout=logout)
-
-@quit
-def safe_execute(cmds="", logout=True, finalcallback = None):
-    return execute(cmds=cmds, logout=logout, finalcallback=finalcallback)
-
-def exec_command(*args, **kwargs):
-    param = " ".join([str(x) for x in args])
-    return execute(cmds=param.format(**kwargs), logout=True, finalcallback=None)
-
-def check_output(*args, **kwargs):
-    param = " ".join([str(x) for x in args])
-    return execute(cmds=param.format(**kwargs), logout=False, finalcallback=None)
-
-
-def try_check_output(*args, **kwargs):
-    param = " ".join([str(x) for x in args])
-    return execute(cmds=param.format(**kwargs), logout=False, finalcallback=None, try_exec=True)
-
-def simple_exec(*args, **kwargs):
-    try:
-        param = " ".join([str(x) for x in args])
-        p = subprocess.Popen(shlex.split(param.format(**kwargs)), shell=True)
-        p.wait()
-        if p.returncode != 0:
-            Log.e ("Failed to execute command '" + param.format(**kwargs) + "'")
-            return False
-        else:
-            return True
-    except Exception as e:
-        Log.e (e)
-        return False
 
 # netcat 服务器
 class nc_server(threading.Thread):
@@ -671,7 +328,7 @@ def toJenkinsEncoding(s):
 def main():
     from locale import getpreferredencoding
     flib.printf( sys.stdout.encoding, getpreferredencoding() )
-    Log.log("b", "a")
+    LOG("b", "a")
     #Log.expt("Tesxt你好")
     flib.printf(toUTF8('Hello你好'))
     # p = subprocess.Popen(shlex.split("svn log -l 10"), shell=True, stdout=subprocess.PIPE)
