@@ -32,13 +32,13 @@ class Publisher(IPublisher):
         for user in self._listOfUsers:
             user.on_notify(*args, **kwargs)
     def on_notify(self, *args, **kwargs):
-        print args, kwargs
+        print (args, kwargs)
 
 class Subscriber(ISubscriber):
     def __init__(self, publisher = None):
         self._publisher = publisher
     def on_notify(self, *args, **kwargs):
-        print args, kwargs
+        print (args, kwargs)
     def notify(self, *args, **kwargs):
         self._publisher.on_notify(*args, **kwargs)
         

@@ -3,13 +3,13 @@ Module for jenkinsapi requester (which is a wrapper around python-requests)
 """
 import requests
 
-from wrapper import multi_key_dict
-from wrapper import six
-from wrapper.six.moves.http_client import BadStatusLine
-from wrapper.six.moves.urllib.error import HTTPError
-from wrapper.six.moves.urllib.error import URLError
-from wrapper.six.moves.urllib.parse import quote, urlencode, urljoin, urlparse
-from wrapper.six.moves.urllib.request import Request, install_opener, build_opener, urlopen
+import multi_key_dict
+import six
+from six.moves.http_client import BadStatusLine
+from six.moves.urllib.error import HTTPError
+from six.moves.urllib.error import URLError
+from six.moves.urllib.parse import quote, urlencode, urljoin, urlparse
+from six.moves.urllib.request import Request, install_opener, build_opener, urlopen
 
 # import logging
 
@@ -237,3 +237,7 @@ class Requester(object):
                 )
             )
         return response
+    
+
+if __name__ == '__main__':
+    print (Requester().get_url('http://www.baidu.com/'))

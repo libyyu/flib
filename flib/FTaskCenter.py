@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import multiprocessing
-from FPublisher import ISubscriber, IPublisher
+from flib.FPublisher import ISubscriber, IPublisher
 
 class FTask(multiprocessing.Process, ISubscriber):
     """
@@ -29,7 +29,7 @@ class FTask(multiprocessing.Process, ISubscriber):
         self.notify(success, self)
     def notify(self, *args, **kwargs):
         if self._publisher is None:
-            print "publisher is none"
+            print ("publisher is none")
             return
         self._publisher.on_notify(*args, **kwargs)
     def on_notify(self, *args, **kwargs):
@@ -61,9 +61,9 @@ class FTaskCenter(IPublisher):
         self.Unlock()
 
     def on_notify(self, *args, **kwargs):
-        print args, kwargs
+        print (args, kwargs)
         task = args[1]
-        print task.getResult()
+        print (task.getResult())
 
     def addTask(self, task):
         """
