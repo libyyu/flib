@@ -315,15 +315,17 @@ class RemoteCommand(object):
 
 	def __connect(self):
 		print('begin connect remote', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-		from threading import Thread
-		p = Thread(target=self.__proc, args=(self,))
-		p.start()
-		time.sleep(4)
+		# from threading import Thread
+		# p = Thread(target=self.__proc, args=(self,))
+		# p.start()
+		# p.join()
+		self.__proc(self)
 
 	def __proc(self, *args):
 		print('enter proc', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-		self.cmd.init(
-			'''cmd /c sh -c "ssh -tt -o BatchMode=yes -i ./RemoteToolChainPrivate.key -p 22 zulong@10.236.179.85"''',
+		cmds = '''sh -c "ssh -tt -o BatchMode=yes -i ./RemoteToolChainPrivate.key -p 22 zulong@10.236.179.85"'''
+		if WINDOWS:cmds = "cmd /c " + cmds
+		self.cmd.init(cmds,
 			logout=True, collectlog=True, simple=True, communicate=True)
 		print('proc', time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
 
@@ -383,10 +385,13 @@ def main():
 	cmd = Command("echo 'a'", logout=True, collectlog=True, simple=True)
 	print(cmd)
 
-	rcmd = RemoteCommand("10.236.179.85", "zulong")
-	rcmd.Pwd()
+	# rcmd = RemoteCommand("10.236.179.85", "zulong")
+	# rcmd.Pwd()
+	# rcmd.Input("ls")
 
-	rcmd.Input("ls")
+	exec_command("ls -l")
+	print(exec_output("ls -l"))
+
 
 
 if __name__ == '__main__':
